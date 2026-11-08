@@ -45,8 +45,10 @@ this direction calls for it), with system fallbacks:
 ## Page
 
 Centered column, max width 1240px, padding 40px 24px 80px, gap 40px, fully
-fluid. Starfield background on the body (three star layers plus a green glow
-top right and a cyan glow left).
+fluid. The body background is a faint tiling pattern (`images/pattern.svg`,
+an original drawing: green portals, an atom, a flask, a ringed planet, a
+flying saucer, a pickle, and stars) under a green glow top right and a cyan
+glow left. The pattern stays at low opacity so panels and text read first.
 
 ## Images
 
@@ -60,6 +62,7 @@ Show artwork in `images/`, resized and saved as WebP (about 300 KB total):
 | `mr-poopybutthole.webp` | Inside the "Add at least one favorite" box. |
 | `rick-wired.webp` | Beside both error messages. |
 | `favicon.png` | Browser tab icon, from the wired Rick head. |
+| `pattern.svg` (original) | Tiling page background. |
 
 All are decorative (`alt=""`), because the text next to each one says the
 same thing.
