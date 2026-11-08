@@ -16,6 +16,13 @@ needed. The page uses:
 - `GET /api/character/?name=<text>` to search characters
 - `GET /api/episode/1,2,3` to fetch many episodes in one request
 
+## Artwork
+
+The header poster, start banner, Pickle Rick, Mr. Poopybutthole and wired
+Rick images in `images/` are show artwork owned by Adult Swim, used in a
+non-commercial fan project for a class. Character pictures in the results
+come from the API.
+
 ## How to use
 
 1. Search for a character by name, or tap one of the quick picks, and press
