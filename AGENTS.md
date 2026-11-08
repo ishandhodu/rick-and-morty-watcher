@@ -1,8 +1,9 @@
 # How this tool is built
 
 - Plain HTML, CSS and JavaScript. GitHub Pages serves the repo files as they
-  are. No framework, no build step, no library, nothing loaded from a CDN
-  (no script, stylesheet or font link to an outside host).
+  are. No framework, no build step, no library, no script from a CDN.
+  The one exception is the Google Fonts stylesheet for Bungee, Outfit and
+  Space Mono that DESIGN.md names. Nothing else from an outside host.
 - Use the simplest code that works, and add nothing I did not ask for.
 - The only outside call is to the Rick and Morty API
   (https://rickandmortyapi.com). It needs no key. No other API, no backend,
@@ -22,7 +23,9 @@
 - One stylesheet (`css/styles.css`), one script (`js/main.js`), one
   `index.html`. No inline `<style>` blocks and no inline event handlers.
 - Never use `alert()`. Errors and invalid input render inline, as described
-  in `PRD.md`. Use `textContent`, not `innerHTML`, for anything that came
+  in `PRD.md`.
+- Settings (ranking, max favorites, season breakdown) live in one `settings`
+  object in `js/main.js`. Use `textContent`, not `innerHTML`, for anything that came
   from the API.
 - Ask for one piece at a time. Build in this order and stop after each so I
   can check it: fetch and log a search, render results, favorites, fetch
