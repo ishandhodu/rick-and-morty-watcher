@@ -6,9 +6,10 @@ The first (flat dark green, then a neon retheme) is in the git history.
 
 ## Concept
 
-A dark sci-fi lab console. The theme comes from the API's character art, an
-original CSS portal, and a portal-green palette on near-black. No show logo,
-no icon pack, no screenshots.
+A dark sci-fi lab console. The theme comes from show artwork, the API's
+character art, an original CSS portal, and a portal-green palette on
+near-black. No show logo or icon pack. The footer credits the art and says
+the project is not affiliated with Adult Swim.
 
 ## Palette
 
@@ -47,6 +48,22 @@ Centered column, max width 1240px, padding 40px 24px 80px, gap 40px, fully
 fluid. Starfield background on the body (three star layers plus a green glow
 top right and a cyan glow left).
 
+## Images
+
+Show artwork in `images/`, resized and saved as WebP (about 300 KB total):
+
+| File | Where |
+|---|---|
+| `hero.webp` (family poster) | Header background, anchored right. The black left side holds the title; a dark gradient keeps text readable when the screen is narrow. |
+| `portal-jump.webp` (Rick and Morty in the portal) | Start banner in step 01, before the first search, above the quick picks. |
+| `pickle-rick.webp` | Beside the "No one named … in this dimension" status. |
+| `mr-poopybutthole.webp` | Inside the "Add at least one favorite" box. |
+| `rick-wired.webp` | Beside both error messages. |
+| `favicon.png` | Browser tab icon, from the wired Rick head. |
+
+All are decorative (`alt=""`), because the text next to each one says the
+same thing.
+
 ## The portal
 
 An original CSS circle used three times (72px header, 36px search loading,
@@ -55,7 +72,8 @@ conic-gradient swirl, pulsing slowly.
 
 ## Layout
 
-- Header: portal, kicker "Interdimensional viewing schedule", H1, subtitle.
+- Header: a rounded banner with the family poster behind it, holding the
+  portal, kicker "Interdimensional viewing schedule", H1, subtitle.
 - Two columns that wrap: search on the left, a sticky aside on the right
   with favorites, plan controls and settings. The aside stacks under the
   search on narrow screens.
@@ -84,12 +102,14 @@ conic-gradient swirl, pulsing slowly.
 
 ## States
 
-- **Empty:** quick-pick chips and no results; favorite slots empty; Build
-  replaced by a dashed box "Add at least one favorite to open a portal".
-- **No match:** status line `No one named "xyz" in this dimension.`
+- **Empty:** the portal-jump banner and quick-pick chips, no results;
+  favorite slots empty; Build replaced by a dashed box with Mr. Poopybutthole
+  and "Add at least one favorite to open a portal".
+- **No match:** Pickle Rick beside `No one named "xyz" in this dimension.`
 - **Loading:** portal plus "Scanning dimensions…" (search) or
   "Calculating the optimal timeline…" (plan).
-- **Error:** status line "Couldn't reach the API. Try again." for search,
+- **Error:** the wired Rick head beside the message. Search: "Couldn't
+  reach the API. Try again.",
   and in red under the Build button "Plan failed — the portal fluid ran out.
   Try again." The buttons stay enabled so the user can try again.
 - **Invalid input:** an empty search is refused with a status line. The
