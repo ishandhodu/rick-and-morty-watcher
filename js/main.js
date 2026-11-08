@@ -143,13 +143,35 @@ function isFavorite(character) {
 
 // ---- search ----
 
-function setStatus(text) {
-  $('#status').textContent = text;
+// kind: '' (plain), 'nomatch' (Pickle Rick) or 'error' (wired Rick).
+const STATUS_ART = {
+  nomatch: { src: 'images/pickle-rick.webp', className: 'art-pickle' },
+  error: { src: 'images/rick-wired.webp', className: 'art-error' }
+};
+
+function withArt(box, text, kind) {
+  box.replaceChildren();
+  if (!text) return;
+  if (STATUS_ART[kind]) {
+    const art = img(STATUS_ART[kind].src, STATUS_ART[kind].className);
+    art.loading = 'eager';
+    box.append(art);
+  }
+  box.append(el('span', '', text));
+}
+
+function setStatus(text, kind = '') {
+  withArt($('#status'), text, kind);
+}
+
+function setPlanError(text) {
+  withArt($('#plan-error'), text, 'error');
 }
 
 function renderChips() {
   const box = $('#chips');
   box.replaceChildren();
+  $('#intro').hidden = state.searched;
   if (state.searched) return;
   box.append(el('span', 'chips-label', 'Try:'));
   QUICK_PICKS.forEach(name => {
@@ -235,9 +257,9 @@ async function runSearch(name) {
     state.count = page.count;
     state.next = page.next;
     state.results = page.results;
-    setStatus(resultsStatus());
+    setStatus(resultsStatus(), state.count === 0 ? 'nomatch' : '');
   } catch (error) {
-    setStatus('Couldn’t reach the API. Try again.');
+    setStatus('Couldn’t reach the API. Try again.', 'error');
   } finally {
     state.searching = false;
     $('#search-loading').hidden = true;
@@ -254,7 +276,7 @@ async function loadMore() {
     state.results = state.results.concat(page.results);
     setStatus(resultsStatus());
   } catch (error) {
-    setStatus('Couldn’t reach the API. Try again.');
+    setStatus('Couldn’t reach the API. Try again.', 'error');
   } finally {
     state.loadingMore = false;
     renderResults();
@@ -343,7 +365,9 @@ function renderBuild() {
   const area = $('#build-area');
   area.replaceChildren();
   if (state.favorites.length === 0) {
-    area.append(el('div', 'build-disabled', 'Add at least one favorite to open a portal'));
+    const box = el('div', 'build-disabled');
+    box.append(img('images/mr-poopybutthole.webp', 'art-poopy'), el('span', '', 'Add at least one favorite to open a portal'));
+    area.append(box);
     return;
   }
   const button = el('button', 'btn-build', state.planBuilt ? 'Rebuild plan' : 'Build plan');
@@ -357,7 +381,7 @@ function renderBuild() {
 
 async function buildPlan() {
   state.building = true;
-  $('#plan-error').textContent = '';
+  setPlanError('');
   $('#plan').hidden = true;
   $('#plan-loading').hidden = false;
   renderBuild();
@@ -370,7 +394,7 @@ async function buildPlan() {
     renderPlan();
     scrollToPlan();
   } catch (error) {
-    $('#plan-error').textContent = 'Plan failed — the portal fluid ran out. Try again.';
+    setPlanError('Plan failed — the portal fluid ran out. Try again.');
   } finally {
     state.building = false;
     $('#plan-loading').hidden = true;
