@@ -212,3 +212,118 @@ function removeFavorite(id) {
   renderFavorites();
   renderResults();
 }
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// Filled dot for each favorite who is in the episode, faint dot for those who are not.
+function pipsFor(item) {
+  const pips = el('span', 'pips');
+  pips.setAttribute('aria-label', `${item.score} of ${state.favorites.length} favorites`);
+  state.favorites.forEach(f => {
+    const dot = el('span', item.appearing.includes(f) ? '' : 'off', '●');
+    pips.append(dot);
+  });
+  return pips;
+}
+
+function episodeRow(item) {
+  const li = el('li', 'ep');
+  li.append(
+    el('span', 'code', item.episode.episode),
+    el('span', 'title', item.episode.name),
+    pipsFor(item),
+    el('span', 'who', item.appearing.map(f => f.name).join(', ')),
+    el('span', 'date', item.episode.air_date)
+  );
+  return li;
+}
+
+function renderPlan(ranked, nights) {
+  const plan = $('#plan');
+  plan.replaceChildren();
+  splitIntoNights(ranked, nights).forEach((night, index) => {
+    const section = el('section', 'night');
+    const heading = el('h4');
+    heading.append(el('span', '', `Night ${index + 1}`), el('span', '', `${night.length} episodes`));
+    const list = el('ul');
+    night.forEach(item => list.append(episodeRow(item)));
+    section.append(heading, list);
+    plan.append(section);
+  });
+
+  const ol = $('#ranked');
+  ol.replaceChildren();
+  ranked.forEach(item => {
+    const li = el('li');
+    li.append(el('span', 'code', item.episode.episode), `${item.episode.name} (${item.score} of ${state.favorites.length})`);
+    ol.append(li);
+  });
+
+  const seasons = seasonCounts(state.favorites, ranked);
+  const biggest = Math.max(...Object.values(seasons).map(s => s.total));
+  const box = $('#seasons');
+  box.replaceChildren();
+  Object.keys(seasons).forEach(number => {
+    const season = seasons[number];
+    const row = el('div', 'season');
+    const label = el('div', 'label');
+    label.append(el('span', '', `Season ${number}`), el('span', '', `${season.total} episodes`));
+    const bar = el('div', 'bar');
+    const fill = el('span');
+    fill.style.width = `${(season.total / biggest) * 100}%`;
+    bar.append(fill);
+    const detail = Object.entries(season.byFavorite).map(([name, count]) => `${name} ${count}`).join(' · ');
+    row.append(label, bar, el('div', 'meta', detail));
+    box.append(row);
+  });
+
+  const mostShared = Math.max(...ranked.map(item => item.score));
+  $('#out-note').textContent = state.favorites.length > 1 && mostShared < 2
+    ? 'None of these characters appear in an episode together. Showing each one’s own episodes instead.'
+    : `${ranked.length} episodes across ${Object.keys(seasons).length} seasons.`;
+  $('#output').hidden = false;
+}
+
+async function runBuild(nights) {
+  const button = $('#build-btn');
+  button.disabled = true;
+  clearError('#plan-error');
+  setMessage('#plan-msg', 'Building your plan...');
+  $('#output').hidden = true;
+  try {
+    const ids = [...new Set(state.favorites.flatMap(f => f.episode.map(idFromUrl)))];
+    const episodes = await getEpisodes(ids);
+    const ranked = rankEpisodes(state.favorites, episodes);
+    renderPlan(ranked, nights);
+    setMessage('#plan-msg', '');
+  } catch (error) {
+    setMessage('#plan-msg', '');
+    showError('#plan-error', 'Could not reach the Rick and Morty API. Check your connection and try again.', () => runBuild(nights));
+  } finally {
+    button.disabled = false;
+  }
+}
+
+$('#plan-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const input = $('#nights-input');
+  const nights = Number(input.value);
+  input.classList.remove('invalid');
+  if (state.favorites.length === 0) {
+    setMessage('#plan-msg', 'Pick at least one character.', true);
+    return;
+  }
+  if (input.value.trim() === '' || !Number.isInteger(nights) || nights < 1 || nights > 20) {
+    input.classList.add('invalid');
+    setMessage('#plan-msg', 'Enter a whole number of nights from 1 to 20.', true);
+    return;
+  }
+  runBuild(nights);
+});
+
+renderFavorites();
