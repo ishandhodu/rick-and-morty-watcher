@@ -1,84 +1,79 @@
 # PRD: Rick and Morty Watch Planner
 
 ## Goal
-Ayushman picks up to three favorite characters and gets a ranked, nightly
-watch plan of the episodes they appear in together.
+Ayushman picks up to three favorite characters and gets a short,
+night-by-night watch plan of the episodes they appear in.
 
 ## User flow
-1. Search a character by name and see matching results.
-2. Pick up to three favorites.
-3. Set how many nights to watch over and how many episodes per night.
-4. See a short plan of the best episodes, split by night, and a season breakdown.
+1. Search a character by name, or tap a quick-pick chip, and see results.
+2. Add up to three favorites (the max is a setting, 1 to 6).
+3. Set nights (1 to 20) and episodes per night (1 to 4) with steppers.
+4. Build the plan and see the night cards and a season breakdown.
 
 ## Data
 API: https://rickandmortyapi.com (no key, CORS open)
-- Search: GET /api/character/?name=<text>  (20 per page; show the first page)
-- Episodes: GET /api/episode/1,2,3  (one request for many ids)
+- Search: GET /api/character/?name=<text>. Uses `info.count`, `info.next`
+  and `results`. "Load more" fetches `info.next` and appends.
+- Episodes: GET /api/episode/1,2,3 (one request; a single id returns an
+  object, so wrap it in an array).
 - Character fields: id, name, image, status, species, episode[] (URLs)
-- Episode fields: id, name, episode ("S01E01"), air_date, characters[] (URLs)
-Assumption stated in README: no runtime in the API, so a night is a number
-of episodes, not minutes.
+- Episode fields: id, name, episode ("S01E01"), air_date
+The API has no runtime, so a night is a number of episodes, not minutes.
 
 ## Computed output
-- Overlap score per episode: how many of the picked favorites are in it.
-- Ranking: highest score first, ties by earliest air date.
-- Plan: only the top (nights x episodes per night) ranked episodes, split
-  into nights. If fewer episodes share the favorites, the plan is shorter.
-  This keeps the plan realistic (for example 5 nights x 2 = 10 episodes) and
-  the page short, instead of listing every episode.
-- Season breakdown: appearances per season among the planned episodes
-  (read from "S02E05" -> 2).
-Episodes with no favorites are left out. The full ranked list is not shown.
+- For each episode, which favorites appear in it (episode id = last part of
+  each URL in `character.episode`). Episodes with none are left out.
+- Ranking setting: "most" (most favorites first, then by episode id) or
+  "chrono" (episode id only).
+- Plan: the first nights x episodes-per-night ranked episodes, split into
+  nights. Only nights with episodes are shown, so the plan can be shorter.
+- Season breakdown (a setting, on by default): planned episodes per season
+  (season = parseInt(code.slice(1, 3))), with per-favorite counts.
+- Every count is pluralized correctly.
 
 Change after user testing: the first version split every shared episode
-across the nights (about 11 per night) and also printed the full ranked list.
-Ayushman and I both found that unrealistic and too long.
+across the nights (about 11 per night) and printed the full ranked list.
+Ayushman and I found that unrealistic and too long, so the plan is capped.
 
 ## States
 
 ### Empty
-- Before any search: a prompt, "Search for a character to start", with the
-  search box focused and an empty "Your favorites (0 of 3)" panel.
-- Search with no match: the API answers 404. Show "No characters found for
-  '<text>'. Try a shorter name." Do not treat this as an error.
-- Favorites picked but no shared episodes: "None of these characters appear
-  in an episode together" and show each one's own episodes instead.
+- Before any search: quick-pick chips ("Rick Sanchez", "Morty Smith",
+  "Summer", "Mr. Meeseeks", "Birdperson", "Squanchy") and no results.
+- Search with no match (the API answers 404): status line
+  `No one named "xyz" in this dimension.` Not an error.
+- No favorites: empty dashed slots, and Build is replaced by
+  "Add at least one favorite to open a portal".
 
 ### Loading
-- Search: "Searching..." under the box; the search button is disabled.
-- Building the plan: "Building your plan..." in the results area; the
-  Build button is disabled so a second click cannot send a second request.
+- Search: a small portal and "Scanning dimensions…".
+- Load more: the button reads "Loading…" and is disabled.
+- Plan: a portal and "Calculating the optimal timeline…".
 
 ### Error
-- Shown in a visible message under the search box or above the results
-  (role="alert"), in red, saying what failed: "Could not reach the Rick and
-  Morty API. Check your connection and try again."
-- Triggered by a network failure (catch) or a non-404 bad response
-  (response.ok false). A 404 on search is the empty state, not this.
-- Next step: a "Try again" button repeats the last request.
+- Search or load more fails (network, or a non-404 bad response): status
+  line "Couldn't reach the API. Try again." The Search button stays enabled.
+- Plan fails: red text under the Build button "Plan failed — the portal
+  fluid ran out. Try again." The Build button stays enabled.
 
 ### Invalid input
-Refused before any request is sent:
-- Empty or whitespace-only search: "Type a character name first."
-- Build with no favorites picked: "Pick at least one character."
-- Picking a fourth favorite: "You can pick up to three. Remove one first."
-- Nights outside 1 to 20 or not a whole number: "Enter a whole number of
-  nights from 1 to 20."
-- Episodes per night outside 1 to 4 or not a whole number: "Enter a whole
-  number of episodes per night from 1 to 4."
+- Empty or whitespace-only search: refused before any request, with the
+  status line "Type a character name first."
+- Steppers cannot go below or above their ranges.
+- Adding past the max is not possible: those cards show "Slots full".
 
 ### In use
-- Search results: image, name, status, species, an "Add" button (disabled
-  once picked).
-- Favorites panel: picked characters with a remove button.
-- Plan: "Night 1, Night 2, ..." groups of episodes, each with code, title,
-  air date, and which favorites appear.
-- Season breakdown: appearances per season, per favorite.
+- Status line `42 results for "Rick" · showing 20`, results grid.
+- Favorite slots with avatar, name, and remove.
+- Plan header "5 nights, 10 episodes" and "The best 10 of 14 episodes
+  featuring your favorites, across 4 seasons."
+- Night cards and the season card.
 
 ## Out of scope
 Accounts, saved plans, other shows, a language model.
 
 ## Constraints
-Plain HTML, CSS and JavaScript. No framework, no CDN, no key. Each fetch in
-try/catch with a response.ok check. Semantic HTML, readable on a phone.
-Deploy on GitHub Pages.
+Plain HTML, CSS and JavaScript. No framework or library. The only outside
+resource besides the API is the Google Fonts stylesheet named in DESIGN.md.
+No key. Each fetch in try/catch with a response.ok check. Semantic HTML,
+readable on a phone. Deploy on GitHub Pages.
