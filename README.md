@@ -39,5 +39,15 @@ output, which was very long. Those UI and UX decisions were poor.
 
 ## Required question
 
-TODO (pick one piece of AI output you did not accept as-is, say what it
-gave you, what you changed, how you knew, and point at the commit).
+The AI's first version of the plan (commit 2adf8b1) split every episode my
+favorite characters share across the nights I picked. With Rick, Morty and
+Summer over 5 nights, that was about 11 episodes a night, and it also printed
+a full ranked list of all 51 episodes below it. I did not accept that. When I
+looked at it, the plan was not something anyone would actually watch, and the
+page was very long. My roommate Ayushman tried it and told me the same thing:
+too long, and he wanted a more realistic plan.
+
+I changed it in commit 867498a. I added an "episodes per night" input (1 to
+4), made the plan include only the best nights x episodes-per-night episodes
+(for example 5 x 2 = 10), and removed the full ranked list. I updated PRD.md
+first, in commit 33e2209, so the change is documented before the code.
