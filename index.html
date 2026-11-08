@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rick and Morty Watch Planner</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Rick and Morty Watch Planner</h1>
+      <p class="sub">Pick up to three favorite characters and get a watch plan of the episodes they share.</p>
+    </header>
+
+    <section aria-labelledby="search-heading">
+      <h2 id="search-heading">1. Find characters</h2>
+      <form id="search-form" novalidate>
+        <label for="search-input">Character name</label>
+        <div class="row">
+          <input id="search-input" type="text" autocomplete="off" placeholder="e.g. Rick">
+          <button id="search-btn" type="submit">Search</button>
+        </div>
+        <p id="search-msg" class="msg" aria-live="polite"></p>
+      </form>
+      <div id="search-error" class="error" role="alert" hidden></div>
+      <ul id="results" class="cards"></ul>
+    </section>
+
+    <section aria-labelledby="fav-heading">
+      <h2 id="fav-heading">2. Your favorites (<span id="fav-count">0</span> of 3)</h2>
+      <p id="fav-empty" class="muted">No favorites yet. Add characters from the search results.</p>
+      <ul id="favorites" class="cards"></ul>
+    </section>
+
+    <section aria-labelledby="plan-heading">
+      <h2 id="plan-heading">3. Build your plan</h2>
+      <form id="plan-form" novalidate>
+        <label for="nights-input">Nights to watch over (1 to 20)</label>
+        <div class="row">
+          <input id="nights-input" type="number" inputmode="numeric" value="5">
+          <button id="build-btn" type="submit">Build plan</button>
+        </div>
+        <p id="plan-msg" class="msg" aria-live="polite"></p>
+      </form>
+      <div id="plan-error" class="error" role="alert" hidden></div>
+    </section>
+
+    <section id="output" aria-labelledby="out-heading" hidden>
+      <h2 id="out-heading">Your watch plan</h2>
+      <p id="out-note" class="muted"></p>
+      <div id="plan"></div>
+      <h3>Ranked episodes</h3>
+      <ol id="ranked"></ol>
+      <h3>By season</h3>
+      <div id="seasons"></div>
+    </section>
+  </main>
+  <script src="js/main.js"></script>
+</body>
+</html>
