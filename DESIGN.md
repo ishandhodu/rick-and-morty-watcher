@@ -35,8 +35,9 @@ Status dots: Alive green, Dead `#ff6b4a`, unknown `#8a97a0`.
 
 ## Type
 
-Loaded from Google Fonts (the one exception to the no-CDN rule, because
-this direction calls for it), with system fallbacks:
+Self-hosted in `fonts/` as WOFF2 (about 65 KB, latin subset) with system
+fallbacks. Nothing is loaded from a CDN. All three are SIL Open Font License
+fonts; their licenses are in `fonts/`.
 - **Bungee**: title, section headings, "Search" and "Build plan", night labels.
 - **Outfit** (400 to 700): body and UI text.
 - **Space Mono** (400, 700): kickers, counters, step badges, episode codes,

@@ -73,7 +73,7 @@ Ayushman and I found that unrealistic and too long, so the plan is capped.
 Accounts, saved plans, other shows, a language model.
 
 ## Constraints
-Plain HTML, CSS and JavaScript. No framework or library. The only outside
-resource besides the API is the Google Fonts stylesheet named in DESIGN.md.
+Plain HTML, CSS and JavaScript. No framework or library, nothing from a
+CDN; fonts are self-hosted. The API is the only outside request.
 No key. Each fetch in try/catch with a response.ok check. Semantic HTML,
 readable on a phone. Deploy on GitHub Pages.

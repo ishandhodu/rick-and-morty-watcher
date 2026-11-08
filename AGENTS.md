@@ -1,9 +1,9 @@
 # How this tool is built
 
 - Plain HTML, CSS and JavaScript. GitHub Pages serves the repo files as they
-  are. No framework, no build step, no library, no script from a CDN.
-  The one exception is the Google Fonts stylesheet for Bungee, Outfit and
-  Space Mono that DESIGN.md names. Nothing else from an outside host.
+  are. No framework, no build step, no library, nothing loaded from a CDN
+  (no script, stylesheet or font link to an outside host). Fonts are
+  self-hosted in `fonts/` and declared with `@font-face` in the stylesheet.
 - Use the simplest code that works, and add nothing I did not ask for.
 - The only outside call is to the Rick and Morty API
   (https://rickandmortyapi.com). It needs no key. No other API, no backend,
