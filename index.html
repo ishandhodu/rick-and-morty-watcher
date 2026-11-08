@@ -36,11 +36,17 @@
     <section aria-labelledby="plan-heading">
       <h2 id="plan-heading">3. Build your plan</h2>
       <form id="plan-form" novalidate>
-        <label for="nights-input">Nights to watch over (1 to 20)</label>
-        <div class="row">
-          <input id="nights-input" type="number" inputmode="numeric" value="5">
-          <button id="build-btn" type="submit">Build plan</button>
+        <div class="fields">
+          <div>
+            <label for="nights-input">Nights (1 to 20)</label>
+            <input id="nights-input" type="number" inputmode="numeric" value="5">
+          </div>
+          <div>
+            <label for="per-night-input">Episodes per night (1 to 4)</label>
+            <input id="per-night-input" type="number" inputmode="numeric" value="2">
+          </div>
         </div>
+        <button id="build-btn" type="submit">Build plan</button>
         <p id="plan-msg" class="msg" aria-live="polite"></p>
       </form>
       <div id="plan-error" class="error" role="alert" hidden></div>
@@ -50,8 +56,6 @@
       <h2 id="out-heading">Your watch plan</h2>
       <p id="out-note" class="muted"></p>
       <div id="plan"></div>
-      <h3>Ranked episodes</h3>
-      <ol id="ranked"></ol>
       <h3>By season</h3>
       <div id="seasons"></div>
     </section>

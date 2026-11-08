@@ -52,13 +52,13 @@ function rankEpisodes(favorites, episodes) {
   return ranked;
 }
 
-// Split the ranked list into the requested number of nights. Rounds the
-// per-night count up, so there can be fewer nights than asked for.
-function splitIntoNights(ranked, nights) {
-  const perNight = Math.ceil(ranked.length / nights);
+// Keep only the best (nights x perNight) episodes, then split them into
+// nights of perNight episodes each. Fewer shared episodes means a shorter plan.
+function planNights(ranked, nights, perNight) {
+  const chosen = ranked.slice(0, nights * perNight);
   const result = [];
-  for (let i = 0; i < ranked.length; i += perNight) {
-    result.push(ranked.slice(i, i + perNight));
+  for (let i = 0; i < chosen.length; i += perNight) {
+    result.push(chosen.slice(i, i + perNight));
   }
   return result;
 }
@@ -243,28 +243,28 @@ function episodeRow(item) {
   return li;
 }
 
-function renderPlan(ranked, nights) {
+function renderPlan(ranked, nights, perNight) {
   const plan = $('#plan');
   plan.replaceChildren();
-  splitIntoNights(ranked, nights).forEach((night, index) => {
+  if (ranked.length === 0) {
+    $('#seasons').replaceChildren();
+    $('#out-note').textContent = 'None of these characters appear in any episode.';
+    $('#output').hidden = false;
+    return;
+  }
+  const nightList = planNights(ranked, nights, perNight);
+  nightList.forEach((night, index) => {
     const section = el('section', 'night');
     const heading = el('h4');
-    heading.append(el('span', '', `Night ${index + 1}`), el('span', '', `${night.length} episodes`));
+    heading.append(el('span', '', `Night ${index + 1}`), el('span', '', night.length === 1 ? '1 episode' : `${night.length} episodes`));
     const list = el('ul');
     night.forEach(item => list.append(episodeRow(item)));
     section.append(heading, list);
     plan.append(section);
   });
 
-  const ol = $('#ranked');
-  ol.replaceChildren();
-  ranked.forEach(item => {
-    const li = el('li');
-    li.append(el('span', 'code', item.episode.episode), `${item.episode.name} (${item.score} of ${state.favorites.length})`);
-    ol.append(li);
-  });
-
-  const seasons = seasonCounts(state.favorites, ranked);
+  const planned = nightList.flat();
+  const seasons = seasonCounts(state.favorites, planned);
   const biggest = Math.max(...Object.values(seasons).map(s => s.total));
   const box = $('#seasons');
   box.replaceChildren();
@@ -285,11 +285,11 @@ function renderPlan(ranked, nights) {
   const mostShared = Math.max(...ranked.map(item => item.score));
   $('#out-note').textContent = state.favorites.length > 1 && mostShared < 2
     ? 'None of these characters appear in an episode together. Showing each one’s own episodes instead.'
-    : `${ranked.length} episodes across ${Object.keys(seasons).length} seasons.`;
+    : `Best ${planned.length} of ${ranked.length} episodes with your favorites, across ${Object.keys(seasons).length} seasons.`;
   $('#output').hidden = false;
 }
 
-async function runBuild(nights) {
+async function runBuild(nights, perNight) {
   const button = $('#build-btn');
   button.disabled = true;
   clearError('#plan-error');
@@ -299,11 +299,11 @@ async function runBuild(nights) {
     const ids = [...new Set(state.favorites.flatMap(f => f.episode.map(idFromUrl)))];
     const episodes = await getEpisodes(ids);
     const ranked = rankEpisodes(state.favorites, episodes);
-    renderPlan(ranked, nights);
+    renderPlan(ranked, nights, perNight);
     setMessage('#plan-msg', '');
   } catch (error) {
     setMessage('#plan-msg', '');
-    showError('#plan-error', 'Could not reach the Rick and Morty API. Check your connection and try again.', () => runBuild(nights));
+    showError('#plan-error', 'Could not reach the Rick and Morty API. Check your connection and try again.', () => runBuild(nights, perNight));
   } finally {
     button.disabled = false;
   }
@@ -313,7 +313,10 @@ $('#plan-form').addEventListener('submit', event => {
   event.preventDefault();
   const input = $('#nights-input');
   const nights = Number(input.value);
+  const perInput = $('#per-night-input');
+  const perNight = Number(perInput.value);
   input.classList.remove('invalid');
+  perInput.classList.remove('invalid');
   if (state.favorites.length === 0) {
     setMessage('#plan-msg', 'Pick at least one character.', true);
     return;
@@ -323,7 +326,12 @@ $('#plan-form').addEventListener('submit', event => {
     setMessage('#plan-msg', 'Enter a whole number of nights from 1 to 20.', true);
     return;
   }
-  runBuild(nights);
+  if (perInput.value.trim() === '' || !Number.isInteger(perNight) || perNight < 1 || perNight > 4) {
+    perInput.classList.add('invalid');
+    setMessage('#plan-msg', 'Enter a whole number of episodes per night from 1 to 4.', true);
+    return;
+  }
+  runBuild(nights, perNight);
 });
 
 renderFavorites();

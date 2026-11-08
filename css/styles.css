@@ -58,6 +58,9 @@ h3 { font: 600 0.8rem var(--mono); letter-spacing: 0.08em; text-transform: upper
 
 label { display: block; margin-bottom: 4px; }
 .row { display: flex; gap: 8px; }
+.fields { display: flex; gap: 12px; margin-bottom: 12px; }
+.fields > div { flex: 1; min-width: 0; }
+.fields input { width: 100%; }
 input {
   flex: 1;
   min-width: 0;
@@ -147,10 +150,6 @@ button.secondary { background: transparent; color: var(--text); border: 1px soli
 .pips { font: 0.9rem var(--mono); letter-spacing: 0.1em; color: var(--portal); text-shadow: 0 0 8px rgba(124, 255, 79, 0.7); }
 .pips .off { color: var(--rule); text-shadow: none; }
 .who, .date { grid-column: 2 / 4; color: var(--muted); font-size: 0.85rem; }
-
-#ranked { margin: 0; padding-left: 24px; }
-#ranked li { padding: 2px 0; }
-#ranked .code { margin-right: 8px; }
 
 .season { margin-bottom: 12px; }
 .season .label { display: flex; justify-content: space-between; font: 0.85rem var(--mono); }
