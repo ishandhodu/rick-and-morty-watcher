@@ -19,16 +19,23 @@ needed. The page uses:
 ## How to use
 
 1. Search for a character by name and press Add on up to three of them.
-2. Enter how many nights you want to watch over (1 to 20).
+2. Enter how many nights you want to watch over (1 to 20) and how many
+   episodes per night (1 to 4).
 3. Press Build plan.
 
-You get a plan split into nights, a ranked list of every episode, and a
-per-season breakdown. Episodes with none of your favorites are left out. The
-API has no episode runtime, so a night is a number of episodes, not minutes.
+You get a short plan of the best episodes (nights x episodes per night),
+split into nights, and a per-season breakdown. Episodes are ranked by how
+many of your favorites are in them. Episodes with none of your favorites are
+left out. The API has no episode runtime, so a night is a number of
+episodes, not minutes.
 
 ## Where what the agent built differs from what I expected
 
-TODO (write this after you have compared the finished tool to your proposal).
+I expected the agent to build a Rick and Morty theme, using the colors from
+the show and symbols related to science, sci-fi and technology, but it did
+not use the exact designs I expected. I also expected it to list just a few
+episodes per night, but it made a very unrealistic plan and printed the full
+output, which was very long. Those UI and UX decisions were poor.
 
 ## Required question
 
