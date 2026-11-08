@@ -23,6 +23,9 @@ Rick images in `images/` are show artwork owned by Adult Swim, used in a
 non-commercial fan project for a class. Character pictures in the results
 come from the API.
 
+Fonts (Bungee, Outfit, Space Mono) are self-hosted in `fonts/` under the SIL
+Open Font License. The page loads nothing from a CDN.
+
 ## How to use
 
 1. Search for a character by name, or tap one of the quick picks, and press
