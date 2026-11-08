@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trial 1: Night block</title>
+  <style>
+    /* Design trial for the core component: one night of the watch plan.
+       Static sample data. Not the real tool. */
+    :root {
+      --space: #0F1318;
+      --panel: #171D25;
+      --rule: #2A3441;
+      --text: #E8EDF2;
+      --muted: #9AA6B4;
+      --portal: #97CE4C;
+      --amber: #F2B84B;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px 16px 48px;
+      background: var(--space); color: var(--text);
+      font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 24px; }
+    .night { background: var(--panel); border: 1px solid var(--rule); border-left: 4px solid var(--portal); border-radius: 6px; margin-bottom: 16px; }
+    .night h2 { display: flex; justify-content: space-between; margin: 0; padding: 12px 16px; font: 600 0.8rem ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--portal); border-bottom: 1px solid var(--rule); }
+    ol { list-style: none; margin: 0; padding: 0; }
+    li { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+    li:last-child { border-bottom: 0; }
+    .code { font: 0.85rem ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--muted); }
+    .title { font-weight: 600; }
+    .pips { font: 0.9rem ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--portal); letter-spacing: 0.1em; }
+    .pips .off { color: var(--rule); }
+    .who { grid-column: 2 / 4; color: var(--muted); font-size: 0.85rem; }
+    .date { grid-column: 2 / 4; color: var(--muted); font-size: 0.8rem; }
+    .error { margin-top: 24px; padding: 12px 16px; border: 1px solid var(--amber); border-radius: 6px; color: var(--amber); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Your watch plan</h1>
+    <p class="sub">Rick, Morty, Summer. 2 nights, 3 episodes each.</p>
+
+    <section class="night">
+      <h2><span>Night 1</span><span>3 episodes</span></h2>
+      <ol>
+        <li>
+          <span class="code">S01E01</span><span class="title">Pilot</span><span class="pips" aria-label="3 of 3 favorites">●●●</span>
+          <span class="who">Rick, Morty, Summer</span>
+          <span class="date">December 2, 2013</span>
+        </li>
+        <li>
+          <span class="code">S01E02</span><span class="title">Lawnmower Dog</span><span class="pips" aria-label="3 of 3 favorites">●●●</span>
+          <span class="who">Rick, Morty, Summer</span>
+          <span class="date">December 9, 2013</span>
+        </li>
+        <li>
+          <span class="code">S01E05</span><span class="title">Meeseeks and Destroy</span><span class="pips" aria-label="2 of 3 favorites">●●<span class="off">●</span></span>
+          <span class="who">Rick, Morty</span>
+          <span class="date">January 20, 2014</span>
+        </li>
+      </ol>
+    </section>
+
+    <p class="error" role="alert">Could not reach the Rick and Morty API. Check your connection and try again.</p>
+  </main>
+</body>
+</html>
