@@ -2,7 +2,7 @@ const API = 'https://rickandmortyapi.com/api';
 
 // ---- data ----
 
-// Returns { status, data }. fetch only throws on a network failure, so a
+// Returns { ok, status, data }. fetch only throws on a network failure, so a
 // 404 or 500 has to be caught by checking response.ok in the caller.
 async function getJson(url) {
   const response = await fetch(url);
@@ -10,13 +10,17 @@ async function getJson(url) {
   return { ok: response.ok, status: response.status, data };
 }
 
-// Search by name. The API answers 404 when nothing matches, which is not an
-// error for us: it means "no results". Only the first page (20) is used.
-async function searchCharacters(name) {
-  const { ok, status, data } = await getJson(`${API}/character/?name=${encodeURIComponent(name)}`);
-  if (status === 404) return [];
+function searchUrl(name) {
+  return `${API}/character/?name=${encodeURIComponent(name)}`;
+}
+
+// One page of characters. The API answers 404 when nothing matches, which is
+// not an error for us: it means "no results".
+async function fetchCharacters(url) {
+  const { ok, status, data } = await getJson(url);
+  if (status === 404) return { count: 0, next: null, results: [] };
   if (!ok) throw new Error(`API answered ${status}`);
-  return data.results;
+  return { count: data.info.count, next: data.info.next, results: data.results };
 }
 
 // "https://rickandmortyapi.com/api/episode/12" -> 12
@@ -26,7 +30,7 @@ function idFromUrl(url) {
 
 // "S02E05" -> 2
 function seasonFromCode(code) {
-  return Number(code.slice(1, 3));
+  return parseInt(code.slice(1, 3), 10);
 }
 
 // Fetch every episode in one request: /episode/1,2,3. With a single id the
@@ -37,23 +41,32 @@ async function getEpisodes(ids) {
   return Array.isArray(data) ? data : [data];
 }
 
-// For each episode, which favorites are in it. Episodes with none are left
-// out. Highest count first, ties by earliest air date, then by id.
-function rankEpisodes(favorites, episodes) {
-  const ranked = episodes.map(episode => {
-    const appearing = favorites.filter(f => f.episode.some(url => idFromUrl(url) === episode.id));
-    return { episode, appearing, score: appearing.length };
-  }).filter(item => item.score > 0);
-
-  ranked.sort((a, b) =>
-    b.score - a.score ||
-    new Date(a.episode.air_date) - new Date(b.episode.air_date) ||
-    a.episode.id - b.episode.id);
-  return ranked;
+// Map episode id -> favorites who appear in it.
+function favoritesByEpisode(favorites) {
+  const map = new Map();
+  favorites.forEach(f => {
+    f.episode.forEach(url => {
+      const id = idFromUrl(url);
+      if (!map.has(id)) map.set(id, []);
+      map.get(id).push(f);
+    });
+  });
+  return map;
 }
 
-// Keep only the best (nights x perNight) episodes, then split them into
-// nights of perNight episodes each. Fewer shared episodes means a shorter plan.
+// "most": most favorites first, then by episode id. "chrono": episode id only.
+function rankEpisodes(episodes, byEpisode, ranking) {
+  const items = episodes.map(episode => ({ episode, appearing: byEpisode.get(episode.id) || [] }))
+    .filter(item => item.appearing.length > 0);
+  items.sort((a, b) =>
+    ranking === 'chrono'
+      ? a.episode.id - b.episode.id
+      : b.appearing.length - a.appearing.length || a.episode.id - b.episode.id);
+  return items;
+}
+
+// Take the first nights x perNight episodes and split them into nights.
+// Only nights that have episodes come back, so the plan can be shorter.
 function planNights(ranked, nights, perNight) {
   const chosen = ranked.slice(0, nights * perNight);
   const result = [];
@@ -63,155 +76,51 @@ function planNights(ranked, nights, perNight) {
   return result;
 }
 
-// Per season: how many planned episodes, and how many each favorite is in.
-function seasonCounts(favorites, ranked) {
-  const seasons = {};
-  ranked.forEach(item => {
+// Season number -> { total, byFavorite: { name: count } }, in season order.
+function seasonCounts(items) {
+  const seasons = new Map();
+  items.forEach(item => {
     const season = seasonFromCode(item.episode.episode);
-    seasons[season] = seasons[season] || { total: 0, byFavorite: {} };
-    seasons[season].total += 1;
-    item.appearing.forEach(f => {
-      seasons[season].byFavorite[f.name] = (seasons[season].byFavorite[f.name] || 0) + 1;
-    });
+    if (!seasons.has(season)) seasons.set(season, { total: 0, byFavorite: new Map() });
+    const entry = seasons.get(season);
+    entry.total += 1;
+    item.appearing.forEach(f => entry.byFavorite.set(f.name, (entry.byFavorite.get(f.name) || 0) + 1));
   });
-  return seasons;
+  return new Map([...seasons.entries()].sort((a, b) => a[0] - b[0]));
+}
+
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
 }
 
 // ---- page wiring ----
 
-const $ = selector => document.querySelector(selector);
-
-const state = {
-  favorites: []   // character objects from the API, max 3
+const settings = {
+  ranking: 'most',      // 'most' | 'chrono'
+  maxFavorites: 3,      // 1 to 6
+  showSeasons: true
 };
 
-function showError(boxId, message, retry) {
-  const box = $(boxId);
-  box.textContent = message;
-  if (retry) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = 'Try again';
-    button.addEventListener('click', retry);
-    box.append(button);
-  }
-  box.hidden = false;
-}
+const state = {
+  query: '',
+  searched: false,
+  searching: false,
+  loadingMore: false,
+  count: 0,
+  next: null,
+  results: [],
+  favorites: [],
+  nights: 5,
+  perNight: 2,
+  building: false,
+  planBuilt: false,
+  lastPlan: null
+};
 
-function clearError(boxId) {
-  $(boxId).hidden = true;
-  $(boxId).textContent = '';
-}
+const LIMITS = { nights: [1, 20], perNight: [1, 4] };
+const QUICK_PICKS = ['Rick Sanchez', 'Morty Smith', 'Summer', 'Mr. Meeseeks', 'Birdperson', 'Squanchy'];
 
-function setMessage(id, text, invalid) {
-  const p = $(id);
-  p.textContent = text;
-  p.classList.toggle('invalid', Boolean(invalid));
-}
-
-function characterCard(character, buttonLabel, buttonDisabled, onClick) {
-  const li = document.createElement('li');
-  li.className = 'card';
-
-  const img = document.createElement('img');
-  img.src = character.image;
-  img.alt = '';
-  img.width = 56;
-  img.height = 56;
-
-  const info = document.createElement('div');
-  info.className = 'info';
-  const name = document.createElement('div');
-  name.className = 'name';
-  name.textContent = character.name;
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  meta.textContent = `${character.status} · ${character.species} · ${character.episode.length} episodes`;
-  info.append(name, meta);
-
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.textContent = buttonLabel;
-  button.disabled = buttonDisabled;
-  button.className = buttonLabel === 'Remove' ? 'secondary' : '';
-  button.addEventListener('click', onClick);
-
-  li.append(img, info, button);
-  return li;
-}
-
-let searchResults = [];
-
-function renderResults() {
-  const list = $('#results');
-  list.replaceChildren();
-  searchResults.forEach(character => {
-    const picked = state.favorites.some(f => f.id === character.id);
-    list.append(characterCard(character, picked ? 'Added' : 'Add', picked, () => addFavorite(character)));
-  });
-}
-
-async function runSearch(name) {
-  const button = $('#search-btn');
-  button.disabled = true;
-  clearError('#search-error');
-  setMessage('#search-msg', 'Searching...');
-  $('#results').replaceChildren();
-  try {
-    searchResults = await searchCharacters(name);
-    if (searchResults.length === 0) {
-      setMessage('#search-msg', `No characters found for '${name}'. Try a shorter name.`);
-    } else {
-      setMessage('#search-msg', '');
-      renderResults();
-    }
-  } catch (error) {
-    setMessage('#search-msg', '');
-    showError('#search-error', 'Could not reach the Rick and Morty API. Check your connection and try again.', () => runSearch(name));
-  } finally {
-    button.disabled = false;
-  }
-}
-
-$('#search-form').addEventListener('submit', event => {
-  event.preventDefault();
-  const name = $('#search-input').value.trim();
-  $('#search-input').classList.remove('invalid');
-  if (name === '') {
-    $('#search-input').classList.add('invalid');
-    setMessage('#search-msg', 'Type a character name first.', true);
-    return;
-  }
-  runSearch(name);
-});
-
-function renderFavorites() {
-  const list = $('#favorites');
-  list.replaceChildren();
-  state.favorites.forEach(character => {
-    list.append(characterCard(character, 'Remove', false, () => removeFavorite(character.id)));
-  });
-  $('#fav-count').textContent = state.favorites.length;
-  $('#fav-empty').hidden = state.favorites.length > 0;
-}
-
-function addFavorite(character) {
-  if (state.favorites.length >= 3) {
-    setMessage('#search-msg', 'You can pick up to three. Remove one first.', true);
-    return;
-  }
-  state.favorites.push(character);
-  setMessage('#search-msg', '');
-  renderFavorites();
-  renderResults();
-}
-
-function removeFavorite(id) {
-  state.favorites = state.favorites.filter(f => f.id !== id);
-  setMessage('#search-msg', '');
-  renderFavorites();
-  renderResults();
-}
+const $ = selector => document.querySelector(selector);
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -220,118 +129,351 @@ function el(tag, className, text) {
   return node;
 }
 
-// Filled dot for each favorite who is in the episode, faint dot for those who are not.
-function pipsFor(item) {
-  const pips = el('span', 'pips');
-  pips.setAttribute('aria-label', `${item.score} of ${state.favorites.length} favorites`);
-  state.favorites.forEach(f => {
-    const dot = el('span', item.appearing.includes(f) ? '' : 'off', '●');
-    pips.append(dot);
-  });
-  return pips;
+function img(src, className) {
+  const image = el('img', className);
+  image.src = src;
+  image.alt = '';
+  image.loading = 'lazy';
+  return image;
 }
 
-function episodeRow(item) {
+function isFavorite(character) {
+  return state.favorites.some(f => f.id === character.id);
+}
+
+// ---- search ----
+
+function setStatus(text) {
+  $('#status').textContent = text;
+}
+
+function renderChips() {
+  const box = $('#chips');
+  box.replaceChildren();
+  if (state.searched) return;
+  box.append(el('span', 'chips-label', 'Try:'));
+  QUICK_PICKS.forEach(name => {
+    const chip = el('button', 'chip', name);
+    chip.type = 'button';
+    chip.addEventListener('click', () => {
+      $('#search-input').value = name;
+      runSearch(name);
+    });
+    box.append(chip);
+  });
+}
+
+function statusClass(status) {
+  const s = status.toLowerCase();
+  return s === 'alive' ? 'alive' : s === 'dead' ? 'dead' : '';
+}
+
+function characterCard(character) {
+  const li = el('li', 'card');
+
+  const imageBox = el('div', 'card-img');
+  const image = img(character.image, isFavorite(character) ? 'faded' : '');
+  const pill = el('span', 'pill');
+  pill.append(el('span', `dot ${statusClass(character.status)}`), character.status);
+  imageBox.append(image, pill);
+
+  const body = el('div', 'card-body');
+  body.append(
+    el('div', 'card-name', character.name),
+    el('div', 'card-meta', `${character.species} · ${plural(character.episode.length, 'episode')}`)
+  );
+
+  const action = el('div', 'card-action');
+  if (isFavorite(character)) {
+    action.append(el('div', 'muted-box', 'In favorites'));
+  } else if (state.favorites.length >= settings.maxFavorites) {
+    action.append(el('div', 'muted-box', 'Slots full'));
+  } else {
+    const add = el('button', 'btn-add', '+ Add to favorites');
+    add.type = 'button';
+    add.addEventListener('click', () => addFavorite(character));
+    action.append(add);
+  }
+  body.append(action);
+
+  li.append(imageBox, body);
+  return li;
+}
+
+function renderResults() {
+  const list = $('#results');
+  list.replaceChildren(...state.results.map(characterCard));
+
+  const more = $('#more');
+  more.replaceChildren();
+  if (state.next && !state.searching) {
+    const button = el('button', 'btn-more', state.loadingMore ? 'Loading…' : 'Load more results');
+    button.type = 'button';
+    button.disabled = state.loadingMore;
+    button.addEventListener('click', loadMore);
+    more.append(button);
+  }
+}
+
+function resultsStatus() {
+  if (state.count === 0) return `No one named "${state.query}" in this dimension.`;
+  return `${plural(state.count, 'result')} for "${state.query}" · showing ${state.results.length}`;
+}
+
+async function runSearch(name) {
+  state.query = name;
+  state.searched = true;
+  state.searching = true;
+  state.results = [];
+  state.next = null;
+  renderChips();
+  setStatus('');
+  $('#search-loading').hidden = false;
+  renderResults();
+  try {
+    const page = await fetchCharacters(searchUrl(name));
+    state.count = page.count;
+    state.next = page.next;
+    state.results = page.results;
+    setStatus(resultsStatus());
+  } catch (error) {
+    setStatus('Couldn’t reach the API. Try again.');
+  } finally {
+    state.searching = false;
+    $('#search-loading').hidden = true;
+    renderResults();
+  }
+}
+
+async function loadMore() {
+  state.loadingMore = true;
+  renderResults();
+  try {
+    const page = await fetchCharacters(state.next);
+    state.next = page.next;
+    state.results = state.results.concat(page.results);
+    setStatus(resultsStatus());
+  } catch (error) {
+    setStatus('Couldn’t reach the API. Try again.');
+  } finally {
+    state.loadingMore = false;
+    renderResults();
+  }
+}
+
+$('#search-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const name = $('#search-input').value.trim();
+  if (name === '') {
+    setStatus('Type a character name first.');
+    $('#search-input').focus();
+    return;
+  }
+  runSearch(name);
+});
+
+// ---- favorites ----
+
+function renderSlots() {
+  const list = $('#slots');
+  list.replaceChildren();
+  for (let i = 0; i < settings.maxFavorites; i++) {
+    const character = state.favorites[i];
+    const li = el('li', character ? 'slot filled' : 'slot empty');
+    if (character) {
+      const info = el('div', 'slot-info');
+      info.append(el('div', 'slot-name', character.name), el('div', 'slot-meta', `${character.species} · ${character.status}`));
+      const remove = el('button', 'btn-remove', '×');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', `Remove ${character.name}`);
+      remove.addEventListener('click', () => removeFavorite(character.id));
+      li.append(img(character.image, 'slot-avatar'), info, remove);
+    } else {
+      li.append(el('span', 'slot-num', String(i + 1).padStart(2, '0')), el('span', 'slot-empty-label', 'Empty slot'));
+    }
+    list.append(li);
+  }
+  $('#fav-counter').textContent = `${state.favorites.length} / ${settings.maxFavorites}`;
+  $('#max-text').textContent = settings.maxFavorites;
+}
+
+function addFavorite(character) {
+  if (isFavorite(character) || state.favorites.length >= settings.maxFavorites) return;
+  state.favorites.push(character);
+  renderFavoritesAndControls();
+}
+
+function removeFavorite(id) {
+  state.favorites = state.favorites.filter(f => f.id !== id);
+  renderFavoritesAndControls();
+}
+
+function renderFavoritesAndControls() {
+  renderSlots();
+  renderResults();
+  renderBuild();
+  renderMaxOptions();
+}
+
+// ---- plan controls ----
+
+function renderSteppers() {
+  $('#nights-val').textContent = state.nights;
+  $('#per-val').textContent = state.perNight;
+  document.querySelectorAll('.ctl button').forEach(button => {
+    const key = button.dataset.key;
+    const dir = Number(button.dataset.dir);
+    const [min, max] = LIMITS[key];
+    button.disabled = dir < 0 ? state[key] <= min : state[key] >= max;
+  });
+  const total = state.nights * state.perNight;
+  $('#plan-summary').textContent = `${state.nights} × ${state.perNight} = up to ${plural(total, 'episode')}`;
+}
+
+document.querySelectorAll('.ctl button').forEach(button => {
+  button.addEventListener('click', () => {
+    const key = button.dataset.key;
+    const [min, max] = LIMITS[key];
+    state[key] = Math.min(max, Math.max(min, state[key] + Number(button.dataset.dir)));
+    renderSteppers();
+  });
+});
+
+function renderBuild() {
+  const area = $('#build-area');
+  area.replaceChildren();
+  if (state.favorites.length === 0) {
+    area.append(el('div', 'build-disabled', 'Add at least one favorite to open a portal'));
+    return;
+  }
+  const button = el('button', 'btn-build', state.planBuilt ? 'Rebuild plan' : 'Build plan');
+  button.type = 'button';
+  button.disabled = state.building;
+  button.addEventListener('click', buildPlan);
+  area.append(button);
+}
+
+// ---- build ----
+
+async function buildPlan() {
+  state.building = true;
+  $('#plan-error').textContent = '';
+  $('#plan').hidden = true;
+  $('#plan-loading').hidden = false;
+  renderBuild();
+  try {
+    const byEpisode = favoritesByEpisode(state.favorites);
+    const episodes = await getEpisodes([...byEpisode.keys()]);
+    const ranked = rankEpisodes(episodes, byEpisode, settings.ranking);
+    state.lastPlan = { ranked, nights: planNights(ranked, state.nights, state.perNight), favorites: [...state.favorites] };
+    state.planBuilt = true;
+    renderPlan();
+    scrollToPlan();
+  } catch (error) {
+    $('#plan-error').textContent = 'Plan failed — the portal fluid ran out. Try again.';
+  } finally {
+    state.building = false;
+    $('#plan-loading').hidden = true;
+    renderBuild();
+  }
+}
+
+function scrollToPlan() {
+  const top = $('#plan').getBoundingClientRect().top + window.scrollY - 16;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
+function episodeRow(item, favoriteCount) {
   const li = el('li', 'ep');
+  const favs = el('div', 'ep-favs');
+  item.appearing.forEach(f => favs.append(img(f.image, 'ep-avatar')));
+  const everyone = favoriteCount >= 2 && item.appearing.length === favoriteCount;
+  favs.append(el('span', 'ep-names', everyone ? 'All your favorites' : item.appearing.map(f => f.name).join(', ')));
   li.append(
-    el('span', 'code', item.episode.episode),
-    el('span', 'title', item.episode.name),
-    pipsFor(item),
-    el('span', 'who', item.appearing.map(f => f.name).join(', ')),
-    el('span', 'date', item.episode.air_date)
+    el('span', 'ep-code', item.episode.episode),
+    el('div', 'ep-title', item.episode.name),
+    el('div', 'ep-date', item.episode.air_date),
+    favs
   );
   return li;
 }
 
-function renderPlan(ranked, nights, perNight) {
-  const plan = $('#plan');
-  plan.replaceChildren();
-  if (ranked.length === 0) {
-    $('#seasons').replaceChildren();
-    $('#out-note').textContent = 'None of these characters appear in any episode.';
-    $('#output').hidden = false;
-    return;
-  }
-  const nightList = planNights(ranked, nights, perNight);
-  nightList.forEach((night, index) => {
-    const section = el('section', 'night');
-    const heading = el('h4');
-    heading.append(el('span', '', `Night ${index + 1}`), el('span', '', night.length === 1 ? '1 episode' : `${night.length} episodes`));
+function renderPlan() {
+  const { ranked, nights, favorites } = state.lastPlan;
+  const planned = nights.flat();
+  const seasons = seasonCounts(planned);
+
+  $('#plan-title').textContent = `${plural(nights.length, 'night')}, ${plural(planned.length, 'episode')}`;
+  const lead = settings.ranking === 'chrono' ? 'The first' : 'The best';
+  $('#plan-note').textContent = ranked.length === 0
+    ? 'None of your favorites appear in any episode.'
+    : `${lead} ${planned.length} of ${plural(ranked.length, 'episode')} featuring your favorites, across ${plural(seasons.size, 'season')}.`;
+
+  const grid = $('#nights');
+  grid.replaceChildren();
+  nights.forEach((night, index) => {
+    const card = el('article', 'night');
+    const head = el('div', 'night-head');
+    head.append(
+      el('h3', 'night-label', `Night ${String(index + 1).padStart(2, '0')}`),
+      el('span', 'night-count', night.length === 1 ? '1 ep' : `${night.length} eps`)
+    );
     const list = el('ul');
-    night.forEach(item => list.append(episodeRow(item)));
-    section.append(heading, list);
-    plan.append(section);
+    night.forEach(item => list.append(episodeRow(item, favorites.length)));
+    card.append(head, list);
+    grid.append(card);
   });
 
-  const planned = nightList.flat();
-  const seasons = seasonCounts(state.favorites, planned);
-  const biggest = Math.max(...Object.values(seasons).map(s => s.total));
-  const box = $('#seasons');
-  box.replaceChildren();
-  Object.keys(seasons).forEach(number => {
-    const season = seasons[number];
+  const rows = $('#season-rows');
+  rows.replaceChildren();
+  const largest = Math.max(0, ...[...seasons.values()].map(s => s.total));
+  seasons.forEach((season, number) => {
     const row = el('div', 'season');
-    const label = el('div', 'label');
-    label.append(el('span', '', `Season ${number}`), el('span', '', `${season.total} episodes`));
-    const bar = el('div', 'bar');
-    const fill = el('span');
-    fill.style.width = `${(season.total / biggest) * 100}%`;
-    bar.append(fill);
-    const detail = Object.entries(season.byFavorite).map(([name, count]) => `${name} ${count}`).join(' · ');
-    row.append(label, bar, el('div', 'meta', detail));
-    box.append(row);
+    const label = el('div', 'season-label');
+    label.append(el('span', '', `Season ${number}`), el('span', '', plural(season.total, 'episode')));
+    const track = el('div', 'track');
+    const fill = el('div', 'fill');
+    fill.style.width = `${(season.total / largest) * 100}%`;
+    track.append(fill);
+    const detail = [...season.byFavorite.entries()].map(([name, count]) => `${name} ×${count}`).join(' · ');
+    row.append(label, track, el('div', 'season-meta', detail));
+    rows.append(row);
   });
-
-  const mostShared = Math.max(...ranked.map(item => item.score));
-  $('#out-note').textContent = state.favorites.length > 1 && mostShared < 2
-    ? 'None of these characters appear in an episode together. Showing each one’s own episodes instead.'
-    : `Best ${planned.length} of ${ranked.length} episodes with your favorites, across ${Object.keys(seasons).length} seasons.`;
-  $('#output').hidden = false;
+  $('#seasons').hidden = !settings.showSeasons || seasons.size === 0;
+  $('#plan').hidden = false;
 }
 
-async function runBuild(nights, perNight) {
-  const button = $('#build-btn');
-  button.disabled = true;
-  clearError('#plan-error');
-  setMessage('#plan-msg', 'Building your plan...');
-  $('#output').hidden = true;
-  try {
-    const ids = [...new Set(state.favorites.flatMap(f => f.episode.map(idFromUrl)))];
-    const episodes = await getEpisodes(ids);
-    const ranked = rankEpisodes(state.favorites, episodes);
-    renderPlan(ranked, nights, perNight);
-    setMessage('#plan-msg', '');
-  } catch (error) {
-    setMessage('#plan-msg', '');
-    showError('#plan-error', 'Could not reach the Rick and Morty API. Check your connection and try again.', () => runBuild(nights, perNight));
-  } finally {
-    button.disabled = false;
+// ---- settings ----
+
+// Max favorites can't go below how many are already picked.
+function renderMaxOptions() {
+  const select = $('#set-max');
+  select.replaceChildren();
+  for (let n = 1; n <= 6; n++) {
+    const option = el('option', '', String(n));
+    option.value = n;
+    option.disabled = n < state.favorites.length;
+    option.selected = n === settings.maxFavorites;
+    select.append(option);
   }
 }
 
-$('#plan-form').addEventListener('submit', event => {
-  event.preventDefault();
-  const input = $('#nights-input');
-  const nights = Number(input.value);
-  const perInput = $('#per-night-input');
-  const perNight = Number(perInput.value);
-  input.classList.remove('invalid');
-  perInput.classList.remove('invalid');
-  if (state.favorites.length === 0) {
-    setMessage('#plan-msg', 'Pick at least one character.', true);
-    return;
-  }
-  if (input.value.trim() === '' || !Number.isInteger(nights) || nights < 1 || nights > 20) {
-    input.classList.add('invalid');
-    setMessage('#plan-msg', 'Enter a whole number of nights from 1 to 20.', true);
-    return;
-  }
-  if (perInput.value.trim() === '' || !Number.isInteger(perNight) || perNight < 1 || perNight > 4) {
-    perInput.classList.add('invalid');
-    setMessage('#plan-msg', 'Enter a whole number of episodes per night from 1 to 4.', true);
-    return;
-  }
-  runBuild(nights, perNight);
+$('#set-ranking').addEventListener('change', event => {
+  settings.ranking = event.target.value;
 });
 
-renderFavorites();
+$('#set-max').addEventListener('change', event => {
+  settings.maxFavorites = Number(event.target.value);
+  renderFavoritesAndControls();
+});
+
+$('#set-seasons').addEventListener('change', event => {
+  settings.showSeasons = event.target.checked;
+  if (state.lastPlan) renderPlan();
+});
+
+// ---- start ----
+
+renderChips();
+renderSteppers();
+renderFavoritesAndControls();
