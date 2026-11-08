@@ -19,6 +19,64 @@ async function searchCharacters(name) {
   return data.results;
 }
 
+// "https://rickandmortyapi.com/api/episode/12" -> 12
+function idFromUrl(url) {
+  return Number(url.split('/').pop());
+}
+
+// "S02E05" -> 2
+function seasonFromCode(code) {
+  return Number(code.slice(1, 3));
+}
+
+// Fetch every episode in one request: /episode/1,2,3. With a single id the
+// API sends an object instead of an array, so wrap it.
+async function getEpisodes(ids) {
+  const { ok, status, data } = await getJson(`${API}/episode/${ids.join(',')}`);
+  if (!ok) throw new Error(`API answered ${status}`);
+  return Array.isArray(data) ? data : [data];
+}
+
+// For each episode, which favorites are in it. Episodes with none are left
+// out. Highest count first, ties by earliest air date, then by id.
+function rankEpisodes(favorites, episodes) {
+  const ranked = episodes.map(episode => {
+    const appearing = favorites.filter(f => f.episode.some(url => idFromUrl(url) === episode.id));
+    return { episode, appearing, score: appearing.length };
+  }).filter(item => item.score > 0);
+
+  ranked.sort((a, b) =>
+    b.score - a.score ||
+    new Date(a.episode.air_date) - new Date(b.episode.air_date) ||
+    a.episode.id - b.episode.id);
+  return ranked;
+}
+
+// Split the ranked list into the requested number of nights. Rounds the
+// per-night count up, so there can be fewer nights than asked for.
+function splitIntoNights(ranked, nights) {
+  const perNight = Math.ceil(ranked.length / nights);
+  const result = [];
+  for (let i = 0; i < ranked.length; i += perNight) {
+    result.push(ranked.slice(i, i + perNight));
+  }
+  return result;
+}
+
+// Per season: how many planned episodes, and how many each favorite is in.
+function seasonCounts(favorites, ranked) {
+  const seasons = {};
+  ranked.forEach(item => {
+    const season = seasonFromCode(item.episode.episode);
+    seasons[season] = seasons[season] || { total: 0, byFavorite: {} };
+    seasons[season].total += 1;
+    item.appearing.forEach(f => {
+      seasons[season].byFavorite[f.name] = (seasons[season].byFavorite[f.name] || 0) + 1;
+    });
+  });
+  return seasons;
+}
+
 // ---- page wiring ----
 
 const $ = selector => document.querySelector(selector);
