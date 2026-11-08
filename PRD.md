@@ -7,8 +7,8 @@ watch plan of the episodes they appear in together.
 ## User flow
 1. Search a character by name and see matching results.
 2. Pick up to three favorites.
-3. Set how many nights to watch over.
-4. See the ranked episodes, the plan split by night, and a season breakdown.
+3. Set how many nights to watch over and how many episodes per night.
+4. See a short plan of the best episodes, split by night, and a season breakdown.
 
 ## Data
 API: https://rickandmortyapi.com (no key, CORS open)
@@ -22,9 +22,17 @@ of episodes, not minutes.
 ## Computed output
 - Overlap score per episode: how many of the picked favorites are in it.
 - Ranking: highest score first, ties by earliest air date.
-- Plan: ranked episodes split into the chosen number of nights.
-- Season breakdown: appearances per season (read from "S02E05" -> 2).
-Episodes with no favorites are left out.
+- Plan: only the top (nights x episodes per night) ranked episodes, split
+  into nights. If fewer episodes share the favorites, the plan is shorter.
+  This keeps the plan realistic (for example 5 nights x 2 = 10 episodes) and
+  the page short, instead of listing every episode.
+- Season breakdown: appearances per season among the planned episodes
+  (read from "S02E05" -> 2).
+Episodes with no favorites are left out. The full ranked list is not shown.
+
+Change after user testing: the first version split every shared episode
+across the nights (about 11 per night) and also printed the full ranked list.
+Ayushman and I both found that unrealistic and too long.
 
 ## States
 
@@ -56,13 +64,15 @@ Refused before any request is sent:
 - Picking a fourth favorite: "You can pick up to three. Remove one first."
 - Nights outside 1 to 20 or not a whole number: "Enter a whole number of
   nights from 1 to 20."
+- Episodes per night outside 1 to 4 or not a whole number: "Enter a whole
+  number of episodes per night from 1 to 4."
 
 ### In use
 - Search results: image, name, status, species, an "Add" button (disabled
   once picked).
 - Favorites panel: picked characters with a remove button.
-- Ranked list: episode code, title, air date, which favorites appear.
-- Plan: "Night 1, Night 2, ..." groups of episodes.
+- Plan: "Night 1, Night 2, ..." groups of episodes, each with code, title,
+  air date, and which favorites appear.
 - Season breakdown: appearances per season, per favorite.
 
 ## Out of scope
