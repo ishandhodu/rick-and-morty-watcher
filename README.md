@@ -18,15 +18,17 @@ needed. The page uses:
 
 ## How to use
 
-1. Search for a character by name and press Add on up to three of them.
-2. Enter how many nights you want to watch over (1 to 20) and how many
-   episodes per night (1 to 4).
+1. Search for a character by name, or tap one of the quick picks, and press
+   "+ Add to favorites" on up to three of them. "Load more results" shows
+   the next page of matches.
+2. Use the steppers to set nights (1 to 20) and episodes per night (1 to 4).
 3. Press Build plan.
 
 You get a short plan of the best episodes (nights x episodes per night),
-split into nights, and a per-season breakdown. Episodes are ranked by how
-many of your favorites are in them. Episodes with none of your favorites are
-left out. The API has no episode runtime, so a night is a number of
+split into night cards, and a per-season breakdown. Episodes are ranked by
+how many of your favorites are in them. Under Settings you can switch to
+chronological order, change the max favorites (1 to 6), or hide the season
+breakdown. The API has no episode runtime, so a night is a number of
 episodes, not minutes.
 
 ## Where what the agent built differs from what I expected
