@@ -1,103 +1,110 @@
 # Design Direction: Rick and Morty Watch Planner
 
 Written before the tool is styled. The core component (a night of the plan)
-is tried out in `design-trials/trial-1.html`; build from this document.
+was tried out in `design-trials/trial-1.html`. This is the second direction.
+The first (flat dark green, then a neon retheme) is in the git history.
 
 ## Concept
 
-A lab console in deep space. The plan is a series of nights, each a logged
-block with its episodes below. The thing to see first is how many of your
-favorites are in each episode, shown as glowing dots next to the title. The
-look borrows the show's colors (portal green, lab-coat cyan, Morty yellow, a
-purple-navy void) and a few science and sci-fi symbols, all drawn with CSS
-and text characters.
-
-No show logos, artwork or screenshots. Character images come from the API.
-
-Revision: the first version used a flat dark green palette with no symbols.
-It was too generic, so this version moves toward the show's own colors and a
-sci-fi feel.
+A dark sci-fi lab console. The theme comes from the API's character art, an
+original CSS portal, and a portal-green palette on near-black. No show logo,
+no icon pack, no screenshots.
 
 ## Palette
 
-| Token | Hex | Use |
-|---|---|---|
-| Void | `#0A0D1A` | Page background (with faint star dots) |
-| Panel | `#131833` | Night blocks, cards, inputs |
-| Rule | `#2B3566` | Borders, empty dots, bar tracks |
-| Text | `#EAF2FF` | Main text |
-| Muted | `#9FB0D6` | Episode codes, dates, hints |
-| Portal | `#7CFF4F` | Primary buttons, headings, filled dots, focus ring, glow |
-| Lab | `#5FD4F4` | Second accent: bar gradient end, section symbols |
-| Yellow | `#FFD23F` | Error and invalid-input messages |
+| Role | Hex |
+|---|---|
+| Page background | `#0a0e12` |
+| Panel / card | `#111820` |
+| Raised panel, card header, image background | `#16202a` |
+| Border | `#22303c` |
+| Divider between episodes | `#1a242e` |
+| Stronger border (filled slot, hover) | `#2c3d4a`, `#3a4d5c` |
+| Text primary | `#eaf2e3` |
+| Text secondary | `#93a39b` |
+| Text tertiary, placeholders | `#6d7d76` |
+| Favorite names | `#c3d0c8` |
+| Portal green (primary accent) | `#a6e13a`, hover `#bdf04f` |
+| Deep green (bar gradient start) | `#3c7a24` |
+| Cyan (episode codes) | `#5fd3e6` |
+| Danger, Dead | `#ff6b4a` |
+| Unknown status | `#8a97a0` |
 
-Contrast: Text and Muted on Panel and Void clear AA for body text. Portal,
-Lab and Yellow on Void and Panel clear AA. Button text is Void on Portal.
+Status dots: Alive green, Dead `#ff6b4a`, unknown `#8a97a0`.
 
 ## Type
 
-- **System sans** (`ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-  sans-serif`): headings, titles, body text.
-- **System monospace** (`ui-monospace, "SF Mono", Menlo, Consolas,
-  monospace`): anything that is a code or a count: S01E01, "Night 1",
-  the dots, the season counts.
+Loaded from Google Fonts (the one exception to the no-CDN rule, because
+this direction calls for it), with system fallbacks:
+- **Bungee**: title, section headings, "Search" and "Build plan", night labels.
+- **Outfit** (400 to 700): body and UI text.
+- **Space Mono** (400, 700): kickers, counters, step badges, episode codes,
+  status pills, summaries.
 
-Nothing is loaded from a CDN. Each typeface does one job and they are not
-mixed within one line.
+## Page
+
+Centered column, max width 1240px, padding 40px 24px 80px, gap 40px, fully
+fluid. Starfield background on the body (three star layers plus a green glow
+top right and a cyan glow left).
+
+## The portal
+
+An original CSS circle used three times (72px header, 36px search loading,
+48px plan loading): a glowing green radial core under a masked, spinning
+conic-gradient swirl, pulsing slowly.
 
 ## Layout
 
-Single column, max width 640px, centered, with 16px side padding so it
-reads on a phone. Blocks are Panel-colored with a 1px Rule border, 8px
-radius, and a 4px Portal bar on the left edge with a soft Portal glow. The
-page background is Void with a few faint star dots drawn in CSS.
-
-Order on the page: search, favorites, nights input and Build button, then
-results (ranked list, nightly plan, season breakdown).
-
-An episode row has three columns: code, title, dots. The favorites' names
-and the air date sit below the title in Muted.
+- Header: portal, kicker "Interdimensional viewing schedule", H1, subtitle.
+- Two columns that wrap: search on the left, a sticky aside on the right
+  with favorites, plan controls and settings. The aside stacks under the
+  search on narrow screens.
+- Below: the watch plan (night cards grid, then a season card) and a footer
+  crediting rickandmortyapi.com.
 
 ## Components
 
-- **Symbols:** a CSS portal (a spinning green and cyan gradient ring) beside
-  the page title, and a small science glyph before each section heading
-  (atom, radiation, star). Glyphs are text characters marked decorative, so
-  screen readers skip them.
-- **Night block:** monospace uppercase heading in Portal ("NIGHT 1", with
-  the episode count on the right), then the episode rows split by Rule lines.
-- **Dots:** one per picked favorite, filled Portal if they are in the
-  episode, Rule if not. Always paired with the names in text and an
-  `aria-label` ("2 of 3 favorites"), so color is never the only signal.
-- **Search result:** image, name, status and species, and an Add button.
-  The button is disabled and reads "Added" once a character is picked.
-- **Buttons:** Portal fill with Void-colored text and a soft glow; disabled is Rule fill
-  with Muted text.
-- **Season breakdown:** one row per season with a count and a Portal to Lab
-  gradient bar scaled to the largest season, and the number always shown beside the bar.
+- **Step badge:** "01", "02", "03" in a green chip beside a Bungee heading.
+- **Search:** field with a `>_` prompt, green Search button, quick-pick chips
+  before the first search, a status line, results grid, "Load more".
+- **Character card:** square image, status pill with colored dot, name,
+  "species · N episodes", and an action: Add to favorites, "In favorites",
+  or "Slots full".
+- **Favorites:** exactly as many slots as the max (default 3). Filled slot
+  has a glowing green avatar ring and a remove button; empty slots are dashed.
+- **Steppers:** Nights (1 to 20, default 5) and Episodes per night (1 to 4,
+  default 2), with a "5 × 2 = up to 10 episodes" summary.
+- **Night card:** header with "Night 01" and "2 eps"; episode rows with a
+  cyan code chip, title, air date, and overlapping favorite avatars with
+  names, or "All your favorites".
+- **Season card:** a bar per season scaled to the largest season, with the
+  per-favorite counts under it.
+- **Settings:** ranking (most favorites first or chronological), max
+  favorites (1 to 6), and whether to show the season breakdown.
 
 ## States
 
-- **Empty (start):** Muted text "Search for a character to start" and a
-  favorites panel reading "Your favorites (0 of 3)".
-- **Empty (no match):** Muted text "No characters found for '<text>'. Try a
-  shorter name." in the results area. Not styled as an error.
-- **Loading:** Muted text "Searching..." or "Building your plan..." in the
-  area that will fill, and the triggering button disabled.
-- **Error:** an Yellow-bordered block with Yellow text, `role="alert"`, above
-  the results, with a "Try again" button inside it.
-- **Invalid input:** one line of Yellow text directly under the field that
-  caused it, and the field gets an Yellow border. Nothing is sent.
-- **In use:** night blocks, ranked list and season breakdown as above.
+- **Empty:** quick-pick chips and no results; favorite slots empty; Build
+  replaced by a dashed box "Add at least one favorite to open a portal".
+- **No match:** status line `No one named "xyz" in this dimension.`
+- **Loading:** portal plus "Scanning dimensions…" (search) or
+  "Calculating the optimal timeline…" (plan).
+- **Error:** status line "Couldn't reach the API. Try again." for search,
+  and in red under the Build button "Plan failed — the portal fluid ran out.
+  Try again." The buttons stay enabled so the user can try again.
+- **Invalid input:** an empty search is refused with a status line. The
+  steppers cannot go outside their ranges, and the app will not let a
+  fourth favorite be added: the card shows "Slots full".
+- **In use:** results, favorites, night cards and season card.
 
 ## Motion
 
-The title portal rotates slowly. Skipped under `prefers-reduced-motion`,
-where it stays still. Nothing else animates.
+The portal spins and pulses. Skipped under `prefers-reduced-motion`. The
+plan scrolls smoothly into view after it is built.
 
 ## Accessibility
 
-- Every interactive element has a visible Portal focus outline.
-- Real `<button>`, `<label>`, `<input>`, `<ol>` and `<section>` elements.
-- Error messages use `role="alert"` so they are announced.
+- Real buttons, labels, inputs, lists and sections. Visible focus outline.
+- Status and error text is in `aria-live` regions.
+- Color is never the only signal: status has text, favorites have names.
 - Readable at 360px wide with no horizontal scroll.
