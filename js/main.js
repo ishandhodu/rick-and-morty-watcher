@@ -126,4 +126,31 @@ $('#search-form').addEventListener('submit', event => {
   }
   runSearch(name);
 });
-function addFavorite() {}
+
+function renderFavorites() {
+  const list = $('#favorites');
+  list.replaceChildren();
+  state.favorites.forEach(character => {
+    list.append(characterCard(character, 'Remove', false, () => removeFavorite(character.id)));
+  });
+  $('#fav-count').textContent = state.favorites.length;
+  $('#fav-empty').hidden = state.favorites.length > 0;
+}
+
+function addFavorite(character) {
+  if (state.favorites.length >= 3) {
+    setMessage('#search-msg', 'You can pick up to three. Remove one first.', true);
+    return;
+  }
+  state.favorites.push(character);
+  setMessage('#search-msg', '');
+  renderFavorites();
+  renderResults();
+}
+
+function removeFavorite(id) {
+  state.favorites = state.favorites.filter(f => f.id !== id);
+  setMessage('#search-msg', '');
+  renderFavorites();
+  renderResults();
+}
